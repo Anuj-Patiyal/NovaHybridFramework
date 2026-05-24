@@ -13,7 +13,7 @@ readonly TARGET_BRANCH="main"
 readonly SOURCE_BRANCH="dev"
 readonly METADATA_DIR=".github/releases"
 readonly MAX_CI_RETRIES=10
-readonly CI_RETRY_DELAY=10          # seconds
+readonly CI_RETRY_DELAY=180          # seconds
 readonly LABEL_COLOR="0366d6"
 
 # ------------------------------------------------------------------------------
