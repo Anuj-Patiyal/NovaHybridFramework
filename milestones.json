@@ -1,0 +1,68 @@
+[
+  {
+    "title": "v0.0.0",
+    "description": "Project Skeleton & CI Setup. Basic Maven structure, pom-validator, and GitHub Actions.",
+    "state": "open",
+    "due_on": "2026-05-25T23:59:59Z"
+  },
+  {
+    "title": "v0.1.0",
+    "description": "Playwright Core & First Test. Introduction of Playwright, TestNG, and TC_001 on demoqa.com.",
+    "state": "open",
+    "due_on": "2026-06-01T23:59:59Z"
+  },
+  {
+    "title": "v0.2.0",
+    "description": "Logging & Config Management. Implementing Log4j2 and environment configuration readers (Properties/YAML).",
+    "state": "open",
+    "due_on": "2026-06-08T23:59:59Z"
+  },
+  {
+    "title": "v0.3.0",
+    "description": "Page Object Model Architecture. Creating BasePage, locators strategy, and reusable action methods.",
+    "state": "open",
+    "due_on": "2026-06-15T23:59:59Z"
+  },
+  {
+    "title": "v0.4.0",
+    "description": "Data-Driven Framework Setup. Integrating Excel/JSON data providers using Apache POI/Jackson for TestNG.",
+    "state": "open",
+    "due_on": "2026-06-22T23:59:59Z"
+  },
+  {
+    "title": "v0.5.0",
+    "description": "Advanced Playwright Features. Implementing Network Interception, API Mocking, and Authentication state persistence.",
+    "state": "open",
+    "due_on": "2026-06-29T23:59:59Z"
+  },
+  {
+    "title": "v0.6.0",
+    "description": "Visual Regression Testing. Integrating Playwright's visual comparison tools and screenshot capture strategies.",
+    "state": "open",
+    "due_on": "2026-07-06T23:59:59Z"
+  },
+  {
+    "title": "v0.7.0",
+    "description": "Cross-Browser & Parallel Execution. Configuring TestNG for parallel runs across Chromium, Firefox, and WebKit.",
+    "state": "open",
+    "due_on": "2026-07-13T23:59:59Z"
+  },
+  {
+    "title": "v0.8.0",
+    "description": "TestNG Listeners & Retry Logic. Implementing ITestListener and IRetryAnalyzer for robust failure handling.",
+    "state": "open",
+    "due_on": "2026-07-20T23:59:59Z"
+  },
+  {
+    "title": "v0.9.0",
+    "description": "Allure Reporting & Dashboard. Setting up Allure listeners, custom attachments (screenshots/traces on failure).",
+    "state": "open",
+    "due_on": "2026-07-27T23:59:59Z"
+  },
+  {
+    "title": "v1.0.0",
+    "description": "First Stable Master Release. Final code polish, README documentation, and full pipeline execution.",
+    "state": "open",
+    "due_on": "2026-08-03T23:59:59Z"
+  }
+]

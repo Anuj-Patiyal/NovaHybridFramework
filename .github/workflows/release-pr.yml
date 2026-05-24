@@ -1,0 +1,142 @@
+name: "Enterprise Release Automation"
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+
+concurrency:
+  group: release-automation
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: "Release & Snapshot Automation"
+    if: >
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Import GPG Key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+          git_tag_gpgsign: true
+
+      - name: Extract Release Information
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          VERSION="${BRANCH#release/v}"
+          TAG="v${VERSION}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "TAG=${TAG}" >> $GITHUB_ENV
+          echo "Release Branch : ${BRANCH}"
+          echo "Release Version: ${VERSION}"
+          echo "Release Tag    : ${TAG}"
+
+      - name: Validate pom.xml Version
+        run: |
+          POM_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | tail -1)
+          if [ "${POM_VERSION}" != "${VERSION}" ]; then
+            echo "::error::pom.xml version mismatch"
+            echo "Expected: ${VERSION}"
+            echo "Actual  : ${POM_VERSION}"
+            exit 1
+          fi
+
+      - name: Create Signed Tag
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${TAG}$"; then
+            echo "Tag already exists: ${TAG}"
+          else
+            git tag -s "${TAG}" -m "Release ${TAG}" || { echo "::error::GPG Tag signing failed. Check GPG key validity."; exit 1; }
+            git push origin "${TAG}" || { echo "::error::Git push failed. Ensure GH_PAT has 'repo' scope."; exit 1; }
+            echo "Signed tag created: ${TAG}"
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "GitHub Release already exists"
+          else
+            gh release create "${TAG}" --title "Release ${TAG}" --generate-notes
+            echo "GitHub Release created"
+          fi
+
+      - name: Calculate Next Snapshot Version
+        run: |
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${VERSION}"
+          NEXT_MINOR=$((MINOR + 1))
+          NEXT_VERSION="${MAJOR}.${NEXT_MINOR}.0-SNAPSHOT"
+          echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_ENV
+          echo "Next Snapshot Version: ${NEXT_VERSION}"
+
+      - name: Prepare Snapshot Bump Branch
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          git fetch origin dev || { echo "::error::Failed to fetch dev branch. Does it exist remotely?"; exit 1; }
+          git checkout -B dev origin/dev
+          BUMP_BRANCH="chore/bump-to-${NEXT_VERSION}"
+
+          if git ls-remote --heads origin "${BUMP_BRANCH}" | grep -q "${BUMP_BRANCH}"; then
+            echo "Snapshot bump branch already exists"
+            exit 0
+          fi
+
+          git checkout -b "${BUMP_BRANCH}"
+          mvn versions:set -DnewVersion="${NEXT_VERSION}" -DgenerateBackupPoms=false
+          git add pom.xml
+          git commit -S -m "chore: bump version to ${NEXT_VERSION}" || { echo "::error::GPG Commit signing failed."; exit 1; }
+          git push -u origin "${BUMP_BRANCH}" || { echo "::error::Git push failed. Ensure GH_PAT has 'repo' scope."; exit 1; }
+          echo "Snapshot bump branch pushed"
+
+      - name: Create Snapshot Bump PR
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          EXISTING_PR=$(gh pr list --base dev --head "chore/bump-to-${NEXT_VERSION}" --json number --jq '.[0].number')
+          if [ -n "${EXISTING_PR}" ]; then
+            echo "Snapshot bump PR already exists"
+          else
+            gh pr create --base dev --head "chore/bump-to-${NEXT_VERSION}" \
+              --title "chore: bump dev to ${NEXT_VERSION}" \
+              --body "Automated SNAPSHOT version bump after release ${TAG}"
+            echo "Snapshot bump PR created"
+          fi
+
+      - name: Delete Release Branch
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          git push origin --delete "${BRANCH}" || true
