@@ -6,9 +6,6 @@ on:
       - closed
     branches:
       - main
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
 
 concurrency:
   group: release-automation
